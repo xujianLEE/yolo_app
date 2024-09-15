@@ -32,8 +32,4 @@ python app.py
 - HTML/CSS/JavaScript: 用于前端界面
 
 ## 截图
-<<<<<<< HEAD
 <img src="index.png" alt="HTML标签图片" title="可以控制尺寸" width="1280" height="600">
-=======
-<img src="index.png" alt="HTML标签图片" title="可以控制尺寸" width="1280" height="600">
->>>>>>> 52d3ad95bf25c9ef6f07e87aee72716bd2234885
