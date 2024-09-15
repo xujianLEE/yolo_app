@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLOv8目标检测系统</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .detection-wrapper {
+            display: flex;
+            justify-content: space-between;
+        }
+        .detection-section {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            width: 48%;
+        }
+        h2 {
+            color: #3498db;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        input[type="file"], input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .loading {
+            display: none;
+            color: #3498db;
+            margin-top: 10px;
+            font-style: italic;
+        }
+        #result-image, #videoStream {
+            display: none;
+            max-width: 100%;
+            margin-top: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>YOLOv8目标检测系统</h1>
+        
+        <div class="detection-wrapper">
+            <div class="detection-section">
+                <h2>图片检测</h2>
+                <div class="form-group">
+                    <label for="file-input">选择图片:</label>
+                    <input type="file" id="file-input" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label for="confidence">置信度阈值:</label>
+                    <input type="text" id="confidence" value="0.5" placeholder="输入置信度 (0-1)">
+                </div>
+                <div class="form-group">
+                    <label for="model-select">选择模型:</label>
+                    <select id="model-select">
+                        {% for model in model_files %}
+                            <option value="{{ model }}">{{ model }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button id="detect-button">开始检测</button>
+                <div id="loading" class="loading">处理中，请稍候...</div>
+                <img id="result-image" src="" alt="检测结果">
+            </div>
+            
+            <div class="detection-section">
+                <h2>视频检测</h2>
+                <div class="form-group">
+                    <label for="videoInput">选择视频:</label>
+                    <input type="file" id="videoInput" accept="video/*">
+                </div>
+                <div class="form-group">
+                    <label for="video-confidence">置信度阈值:</label>
+                    <input type="text" id="video-confidence" value="0.5" placeholder="输入置信度 (0-1)">
+                </div>
+                <div class="form-group">
+                    <label for="video-model-select">选择模型:</label>
+                    <select id="video-model-select">
+                        {% for model in model_files %}
+                            <option value="{{ model }}">{{ model }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button id="uploadVideoButton">开始视频检测</button>
+                <div id="video-loading" class="loading">视频处理中，请稍候...</div>
+                <img id="videoStream" src="" alt="视频流">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM fully loaded and parsed');
+
+            const detectButton = document.getElementById('detect-button');
+            const uploadVideoButton = document.getElementById('uploadVideoButton');
+
+            if (detectButton) {
+                console.log('Detect button found');
+                detectButton.addEventListener('click', function() {
+                    console.log('图片检测按钮被点击');
+                    const fileInput = document.getElementById('file-input').files[0];
+                    const confidenceValue = parseFloat(document.getElementById('confidence').value);
+                    const modelName = document.getElementById('model-select').value;
+
+                    if (!fileInput) {
+                        alert('请选择一个图片文件');
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('file', fileInput);
+                    formData.append('confidence', confidenceValue);
+                    formData.append('model', modelName);
+
+                    document.getElementById('loading').style.display = 'block';
+                    document.getElementById('result-image').style.display = 'none';
+
+                    fetch('/detect_image', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('loading').style.display = 'none';
+                        const resultImage = document.getElementById('result-image');
+                        // 添加一个时间戳参数来强制浏览器重新加载图片
+                        resultImage.src = data.result_image_url + '?t=' + new Date().getTime();
+                        resultImage.style.display = 'block';
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        document.getElementById('loading').style.display = 'none';
+                        alert('图片处理出错');
+                    });
+                });
+            } else {
+                console.error('Detect button not found');
+            }
+
+            if (uploadVideoButton) {
+                console.log('Upload video button found');
+                uploadVideoButton.addEventListener('click', function() {
+                    console.log('视频检测按钮被点击');
+                    const videoInput = document.getElementById('videoInput').files[0];
+                    const confidenceValue = parseFloat(document.getElementById('video-confidence').value);
+                    const modelName = document.getElementById('video-model-select').value;
+
+                    if (!videoInput) {
+                        alert('请选择一个视频文件');
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('file', videoInput);
+                    formData.append('confidence', confidenceValue);
+                    formData.append('model', modelName);
+
+                    document.getElementById('video-loading').style.display = 'block';
+                    document.getElementById('videoStream').style.display = 'none';
+
+                    fetch('/detect_video', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('video-loading').style.display = 'none';
+                        const videoStream = document.getElementById('videoStream');
+                        videoStream.src = data.stream_url + '?t=' + new Date().getTime();
+                        videoStream.style.display = 'block';
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        document.getElementById('video-loading').style.display = 'none';
+                        alert('上传或处理视频时出错');
+                    });
+                });
+            } else {
+                console.error('Upload video button not found');
+            }
+        });
+    </script>
+</body>
+</html>
