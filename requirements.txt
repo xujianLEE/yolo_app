@@ -1,5 +1,12 @@
+<<<<<<< HEAD
 Flask
 opencv-python
 numpy
 Pillow
+=======
+Flask
+opencv-python
+numpy
+Pillow
+>>>>>>> 52d3ad95bf25c9ef6f07e87aee72716bd2234885
 ultralytics
