@@ -3,7 +3,8 @@ from flask import jsonify, current_app
 from model_handler import load_model, process_image, extract_person_boxes, draw_boxes
 import uuid
 import cv2
-
+import torch
+import tempfile
 def process_image_request(request):
     try:
         file = request.files['file']
@@ -14,25 +15,15 @@ def process_image_request(request):
         img_cv, results = process_image(file, model, confidence_threshold)
         person_boxes = extract_person_boxes(results)
         draw_boxes(img_cv, person_boxes)
-
-        # 生成唯一的文件名
-        unique_filename = f"result_image_{uuid.uuid4().hex}.png"
-        output_path = os.path.join(current_app.static_folder, unique_filename)
         
-        print(f"Saving image to: {output_path}")
-        cv2.imwrite(output_path, img_cv)
-
-        if os.path.exists(output_path):
-            print(f"File exists: {output_path}")
-            file_size = os.path.getsize(output_path)
-            print(f"File size: {file_size} bytes")
-        else:
-            print(f"File does not exist: {output_path}")
-
-        result_url = f'/static/{unique_filename}'
-        print(f"Result URL: {result_url}")
-
-        return jsonify({'result_image_url': result_url})
+        # 使用相对路径保存临时文件
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg', dir='static/temp')
+        cv2.imwrite(temp_file.name, img_cv)
+        
+        # 获取相对路径
+        relative_path = os.path.relpath(temp_file.name, 'static')
+        
+        return jsonify({'result_image_url': f'/static/{relative_path}'})
     except Exception as e:
         print(f"Error in process_image_request: {str(e)}")
         return jsonify({'error': str(e)}), 500

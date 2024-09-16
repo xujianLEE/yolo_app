@@ -4,7 +4,7 @@ import threading
 import queue
 import cv2
 import time
-from flask import jsonify, url_for
+from flask import jsonify, url_for, request
 from model_handler import load_model, process_image, extract_person_boxes, draw_boxes
 
 processed_frames = queue.Queue()
@@ -54,12 +54,12 @@ def process_video(video_path, model, confidence_threshold):
     print(f"Total frames: {total_frames}")
     print(f"Duration: {duration:.2f} seconds")
     
-    frames_to_process = min(int(duration * 2), 60)  # 最多处理30秒，每秒2帧
+    frames_to_process = int(duration * 10)  # 每秒处理10帧
     
     for i in range(frames_to_process):
         if processing_complete.is_set():
             break
-        cap.set(cv2.CAP_PROP_POS_MSEC, i * 500)  # 设置读取位置为每0.5秒的帧
+        cap.set(cv2.CAP_PROP_POS_FRAMES, i * (fps // 10))  # 设置读取位置为每0.1秒的帧
         ret, frame = cap.read()
         if not ret:
             break
@@ -82,8 +82,4 @@ def video_feed():
             if ret:
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
-            time.sleep(0.5)
-        elif processing_complete.is_set() and processed_frames.empty():
-            break
-        else:
-            time.sleep(0.1)
+            time.sleep(0.1)  # 每0.

@@ -2,7 +2,7 @@ import os
 from flask import Flask, send_from_directory
 from routes import register_routes
 from utils import get_local_ip
-
+import torch
 # 获取当前文件的目录
 current_dir = os.path.dirname(os.path.abspath(__file__))
 # 设置静态文件夹的路径
